@@ -10,8 +10,8 @@ from crawl4ai import (
     LLMExtractionStrategy,
 )
 
-from models.venue import Venue
-from utils.data_utils import is_complete_venue, is_duplicate_venue
+from models.health_product_review import HealthProductReview
+from utils.data_utils import is_complete_product, is_duplicate_product
 
 
 def get_browser_config() -> BrowserConfig:
@@ -38,13 +38,13 @@ def get_llm_strategy() -> LLMExtractionStrategy:
     """
     # https://docs.crawl4ai.com/api/strategies/#llmextractionstrategy
     return LLMExtractionStrategy(
-        provider="groq/deepseek-r1-distill-llama-70b",  # Name of the LLM provider
-        api_token=os.getenv("GROQ_API_KEY"),  # API token for authentication
-        schema=Venue.model_json_schema(),  # JSON schema of the data model
+        provider="deepseek/deepseek-reasoner",  # Name of the LLM provider
+        api_token=os.getenv("DEEPSEEK_API_KEY"),  # API token for authentication
+        schema=HealthProductReview.model_json_schema(),  # JSON schema of the data model
         extraction_type="schema",  # Type of extraction to perform
         instruction=(
-            "Extract all venue objects with 'name', 'location', 'price', 'capacity', "
-            "'rating', 'reviews', and a 1 sentence description of the venue from the "
+            "Extract all product information with 'product_name', 'company_name', 'average_scores', 'total_reviews', "
+            "'customer_name', 'review_score', 'review_date', 'review_text' and a 1 sentence description of product "
             "following content."
         ),  # Instructions for the LLM
         input_format="markdown",  # Format of the input content
@@ -142,36 +142,36 @@ async def fetch_and_process_page(
     # Parse extracted content
     extracted_data = json.loads(result.extracted_content)
     if not extracted_data:
-        print(f"No venues found on page {page_number}.")
+        print(f"No product found on page {page_number}.")
         return [], False
 
     # After parsing extracted content
     print("Extracted data:", extracted_data)
 
-    # Process venues
-    complete_venues = []
-    for venue in extracted_data:
-        # Debugging: Print each venue to understand its structure
-        print("Processing venue:", venue)
+    # Process products
+    complete_products = []
+    for product in extracted_data:
+        # Debugging: Print each product to understand its structure
+        print("Processing products review:", product)
 
         # Ignore the 'error' key if it's False
-        if venue.get("error") is False:
-            venue.pop("error", None)  # Remove the 'error' key if it's False
+        if product.get("error") is False:
+            product.pop("error", None)  # Remove the 'error' key if it's False
 
-        if not is_complete_venue(venue, required_keys):
-            continue  # Skip incomplete venues
+        if not is_complete_product(product, required_keys):
+            continue  # Skip incomplete products
 
-        if is_duplicate_venue(venue["name"], seen_names):
-            print(f"Duplicate venue '{venue['name']}' found. Skipping.")
-            continue  # Skip duplicate venues
+        if is_duplicate_product(product["product_name"], seen_names):
+            print(f"Duplicate product '{product['product_name']}' found. Skipping.")
+            continue  # Skip duplicate products
 
         # Add venue to the list
-        seen_names.add(venue["name"])
-        complete_venues.append(venue)
+        seen_names.add(product["product_name"])
+        complete_products.append(product)
 
-    if not complete_venues:
-        print(f"No complete venues found on page {page_number}.")
+    if not complete_products:
+        print(f"No complete product found on page {page_number}.")
         return [], False
 
-    print(f"Extracted {len(complete_venues)} venues from page {page_number}.")
-    return complete_venues, False  # Continue crawling
+    print(f"Extracted {len(complete_products)} product from page {page_number}.")
+    return complete_products, False  # Continue crawling
